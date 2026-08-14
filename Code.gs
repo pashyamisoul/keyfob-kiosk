@@ -425,81 +425,85 @@ function styleLog_(log) {
   protectWarnOnly_(log, 'The kiosk manages this data. Edit only if you know what you are doing.');
 }
 
-/** Live overview tab: counters, currently-out list, latest check-outs. */
+/** Live overview tab: counters, currently out, and today's check-outs. */
 function buildDashboard_(ss) {
   const old = ss.getSheetByName('Dashboard');
   if (old) ss.deleteSheet(old);
   const dash = ss.insertSheet('Dashboard', 0);
   dash.setTabColor(BRAND.primary);
   dash.setHiddenGridlines(true);
-  dash.getRange('A1:M60').setBackground(BRAND.cream);
+  dash.getRange('A1:H80').setBackground(BRAND.cream);
 
-  // Layout: A is a margin column; cards sit in B, D, F
-  dash.setColumnWidth(1, 24);
-  [[2, 150], [3, 210], [4, 210], [5, 165], [6, 150], [7, 30], [8, 165], [9, 90], [10, 200], [11, 120]]
+  // Single-column layout: everything fits one screen, no sideways scrolling
+  dash.setColumnWidth(1, 28);
+  [[2, 115], [3, 210], [4, 230], [5, 175], [6, 120], [7, 115]]
     .forEach(function (w) { dash.setColumnWidth(w[0], w[1]); });
 
   dash.getRange('B2').setValue('Keyfob Dashboard')
     .setFontSize(22).setFontWeight('bold').setFontColor(BRAND.black);
-  dash.getRange('B3').setValue('Live overview. Updates automatically from the Fob Log tab, nothing to maintain.')
+  dash.getRange('B3').setValue('Updates automatically from the Fob Log tab. Nothing to maintain.')
     .setFontColor(BRAND.muted).setFontSize(10);
 
-  // KPI cards
+  // KPI cards, each merged across two columns
   const cards = [
-    ['B', 'FOBS OUT NOW', '=COUNTIF(\'Fob Log\'!$I$2:$I,"OUT")', BRAND.primaryDark],
-    ['D', 'OVERDUE (OUT > 24 H)', '=COUNTIFS(\'Fob Log\'!$I$2:$I,"OUT",\'Fob Log\'!$H$2:$H,"<"&NOW()-1)', BRAND.danger],
-    ['F', 'RETURNED THIS WEEK', '=COUNTIFS(\'Fob Log\'!$I$2:$I,"RETURNED",\'Fob Log\'!$J$2:$J,">="&TODAY()-WEEKDAY(TODAY(),2)+1)', BRAND.emeraldDark],
+    ['B5:C5', 'B6:C6', 'B5:C6', 'FOBS OUT NOW',
+     '=COUNTIF(\'Fob Log\'!$I$2:$I,"OUT")', BRAND.primaryDark],
+    ['D5:E5', 'D6:E6', 'D5:E6', 'OVERDUE (OUT > 24 H)',
+     '=COUNTIFS(\'Fob Log\'!$I$2:$I,"OUT",\'Fob Log\'!$H$2:$H,"<"&NOW()-1)', BRAND.danger],
+    ['F5:G5', 'F6:G6', 'F5:G6', 'RETURNED THIS WEEK',
+     '=COUNTIFS(\'Fob Log\'!$I$2:$I,"RETURNED",\'Fob Log\'!$J$2:$J,">="&TODAY()-WEEKDAY(TODAY(),2)+1)', BRAND.emeraldDark],
   ];
   cards.forEach(function (card) {
-    const colLetter = card[0];
-    dash.getRange(colLetter + '5:' + colLetter + '6').setBackground(BRAND.white)
+    dash.getRange(card[2]).setBackground(BRAND.white)
       .setBorder(true, true, true, true, false, false, BRAND.grey, SpreadsheetApp.BorderStyle.SOLID);
-    dash.getRange(colLetter + '5').setValue(card[1])
+    dash.getRange(card[0]).merge().setValue(card[3])
       .setFontSize(9).setFontWeight('bold').setFontColor(BRAND.muted)
       .setVerticalAlignment('bottom').setHorizontalAlignment('center');
-    dash.getRange(colLetter + '6').setFormula(card[2])
-      .setFontSize(30).setFontWeight('bold').setFontColor(card[3])
+    dash.getRange(card[1]).merge().setFormula(card[4])
+      .setFontSize(30).setFontWeight('bold').setFontColor(card[5])
       .setHorizontalAlignment('center').setVerticalAlignment('top').setNumberFormat('0');
   });
-  dash.setRowHeight(6, 52);
+  dash.setRowHeight(5, 28);
+  dash.setRowHeight(6, 54);
 
-  // Currently out (left)
+  // Currently out
   dash.getRange('B9').setValue('CURRENTLY OUT')
     .setFontWeight('bold').setFontColor(BRAND.muted).setFontSize(10);
-  const outHeaders = ['Fob', 'Who', 'Team / Company', 'Checked out at', 'Days out'];
-  dash.getRange('B10:F10').setValues([outHeaders])
+  dash.getRange('B10:F10').setValues([['Fob', 'Who', 'Team / Company', 'Checked out at', 'Days out']])
     .setFontWeight('bold').setFontColor(BRAND.black)
     .setBorder(false, false, true, false, false, false, BRAND.grey, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
   dash.getRange('B11').setFormula(
     '=IF(COUNTIF(\'Fob Log\'!$I$2:$I,"OUT")=0,"All fobs are in.",' +
-    'QUERY(\'Fob Log\'!$A$2:$O,"select B, C, F, H where I = \'OUT\' order by H asc",0))');
-  dash.getRange('F11').setFormula('=ARRAYFORMULA(IF(LEN($E$11:$E$40)=0,,ROUND(NOW()-$E$11:$E$40,1)))');
-  dash.getRange('E11:E40').setNumberFormat('yyyy-mm-dd hh:mm');
-  dash.getRange('F11:F40').setNumberFormat('0.0');
+    'QUERY(\'Fob Log\'!$A$2:$O,"select B, C, F, H where I = \'OUT\' order by H asc limit 20",0))');
+  dash.getRange('F11').setFormula('=ARRAYFORMULA(IF(LEN($E$11:$E$30)=0,,ROUND(NOW()-$E$11:$E$30,1)))');
+  dash.getRange('E11:E30').setNumberFormat('yyyy-mm-dd hh:mm');
+  dash.getRange('F11:F30').setNumberFormat('0.0');
 
-  // Latest check-outs (right)
-  dash.getRange('H9').setValue('LATEST CHECK-OUTS')
+  // Checked out today (rolls over automatically at midnight via TODAY())
+  dash.getRange('B33').setValue('CHECKED OUT TODAY')
     .setFontWeight('bold').setFontColor(BRAND.muted).setFontSize(10);
-  dash.getRange('H10:K10').setValues([['When', 'Fob', 'Who', 'Status']])
+  dash.getRange('B34:E34').setValues([['Time', 'Fob', 'Who', 'Status']])
     .setFontWeight('bold').setFontColor(BRAND.black)
     .setBorder(false, false, true, false, false, false, BRAND.grey, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
-  dash.getRange('H11').setFormula(
-    '=IFERROR(QUERY(\'Fob Log\'!$A$2:$O,"select H, B, C, I where B is not null order by H desc limit 10",0),)');
-  dash.getRange('H11:H21').setNumberFormat('yyyy-mm-dd hh:mm');
+  dash.getRange('B35').setFormula(
+    '=IF(COUNTIF(\'Fob Log\'!$H$2:$H,">="&TODAY())=0,"No check-outs yet today.",' +
+    'QUERY(\'Fob Log\'!$A$2:$O,' +
+    '"select H, B, C, I where H >= date \'"&TEXT(TODAY(),"yyyy-mm-dd")&"\' order by H desc",0))');
+  dash.getRange('B35:B64').setNumberFormat('hh:mm');
 
   const rules = [
     SpreadsheetApp.newConditionalFormatRule()
       .whenNumberGreaterThan(1)
       .setFontColor(BRAND.danger).setBold(true)
-      .setRanges([dash.getRange('F11:F40')]).build(),
+      .setRanges([dash.getRange('F11:F30')]).build(),
     SpreadsheetApp.newConditionalFormatRule()
       .whenTextEqualTo('OUT')
       .setFontColor(BRAND.primaryDark).setBold(true)
-      .setRanges([dash.getRange('K11:K21')]).build(),
+      .setRanges([dash.getRange('E35:E64')]).build(),
     SpreadsheetApp.newConditionalFormatRule()
       .whenTextEqualTo('RETURNED')
       .setFontColor(BRAND.emeraldDark)
-      .setRanges([dash.getRange('K11:K21')]).build(),
+      .setRanges([dash.getRange('E35:E64')]).build(),
   ];
   dash.setConditionalFormatRules(rules);
 
