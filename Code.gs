@@ -348,6 +348,171 @@ function redactExpiredExternalData() {
 }
 
 // ---------------------------------------------------------------------------
+// Presentation: run styleSheets() once from the editor (and again anytime,
+// it is safe to re-run). Builds a live Dashboard tab and makes the Fob Log
+// readable for non-technical users. All looks live in code so they survive
+// handover and can be restored with one run.
+// ---------------------------------------------------------------------------
+
+const BRAND = {
+  primary: '#1E3A8A', primaryDark: '#16306F', cream: '#F8FAFC',
+  grey: '#CBD5E1', black: '#0F172A', muted: '#475569',
+  dandelion: '#FACC15', dandelionLight: '#FEF9C3', tangerineLight: '#FEE2E2',
+  danger: '#B91C1C', emerald: '#16A34A', emeraldDark: '#14532D',
+  emeraldLight: '#F0FDF4', redactedGrey: '#EEF1F4', redactedText: '#94A3B8',
+  white: '#FFFFFF',
+};
+
+function styleSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const log = mustGetSheet_(ss, CFG.LOG_SHEET);
+  styleLog_(log);
+  buildDashboard_(ss);
+  const teams = ss.getSheetByName(CFG.TEAMS_SHEET);
+  if (teams) teams.setTabColor(BRAND.emerald);
+}
+
+/** Traffic-light formatting, tidy columns, and gentle protection for the log. */
+function styleLog_(log) {
+  const rows = log.getMaxRows();
+
+  // Header: white on the primary color, frozen; keep fob + name in view
+  log.getRange(1, 1, 1, LOG_HEADER.length)
+    .setBackground(BRAND.primary).setFontColor(BRAND.white).setFontWeight('bold');
+  log.setFrozenRows(1);
+  log.setFrozenColumns(3);
+  log.setTabColor(BRAND.grey);
+
+  // Readable column widths (A stays narrow, it gets hidden below)
+  const widths = { 2: 100, 3: 170, 4: 220, 5: 90, 6: 170, 7: 170, 8: 155, 9: 110, 10: 155, 11: 170, 12: 220, 13: 240 };
+  Object.keys(widths).forEach(function (c) { log.setColumnWidth(Number(c), widths[c]); });
+
+  // Hide the technical columns the team never needs
+  log.showColumns(1, LOG_HEADER.length); // reset first so re-runs stay correct
+  log.hideColumns(COL.LOG_ID + 1);
+  log.hideColumns(COL.REMINDERS + 1, 2); // Reminders Sent + Consent
+
+  // Permanent filter row
+  const existingFilter = log.getFilter();
+  if (existingFilter) existingFilter.remove();
+  log.getRange(1, 1, rows, LOG_HEADER.length).createFilter();
+
+  // Traffic lights
+  const dataRange = log.getRange(2, 1, rows - 1, LOG_HEADER.length);
+  const statusRange = log.getRange(2, COL.STATUS + 1, rows - 1, 1);
+  const rules = [
+    // Redacted GDPR rows read as archived
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=$C2="REDACTED (GDPR retention)"')
+      .setBackground(BRAND.redactedGrey).setFontColor(BRAND.redactedText)
+      .setRanges([dataRange]).build(),
+    // Whole row tinted when a fob is out for more than 24 h
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND($I2="OUT", $H2<>"", $H2<NOW()-1)')
+      .setBackground(BRAND.tangerineLight)
+      .setRanges([dataRange]).build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('OUT')
+      .setBackground(BRAND.dandelionLight).setFontColor(BRAND.primaryDark).setBold(true)
+      .setRanges([statusRange]).build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('RETURNED')
+      .setBackground(BRAND.emeraldLight).setFontColor(BRAND.emeraldDark)
+      .setRanges([statusRange]).build(),
+  ];
+  log.setConditionalFormatRules(rules);
+
+  protectWarnOnly_(log, 'The kiosk manages this data. Edit only if you know what you are doing.');
+}
+
+/** Live overview tab: counters, currently-out list, latest check-outs. */
+function buildDashboard_(ss) {
+  const old = ss.getSheetByName('Dashboard');
+  if (old) ss.deleteSheet(old);
+  const dash = ss.insertSheet('Dashboard', 0);
+  dash.setTabColor(BRAND.primary);
+  dash.setHiddenGridlines(true);
+  dash.getRange('A1:M60').setBackground(BRAND.cream);
+
+  // Layout: A is a margin column; cards sit in B, D, F
+  dash.setColumnWidth(1, 24);
+  [[2, 150], [3, 210], [4, 210], [5, 165], [6, 150], [7, 30], [8, 165], [9, 90], [10, 200], [11, 120]]
+    .forEach(function (w) { dash.setColumnWidth(w[0], w[1]); });
+
+  dash.getRange('B2').setValue('Keyfob Dashboard')
+    .setFontSize(22).setFontWeight('bold').setFontColor(BRAND.black);
+  dash.getRange('B3').setValue('Live overview. Updates automatically from the Fob Log tab, nothing to maintain.')
+    .setFontColor(BRAND.muted).setFontSize(10);
+
+  // KPI cards
+  const cards = [
+    ['B', 'FOBS OUT NOW', '=COUNTIF(\'Fob Log\'!$I$2:$I,"OUT")', BRAND.primaryDark],
+    ['D', 'OVERDUE (OUT > 24 H)', '=COUNTIFS(\'Fob Log\'!$I$2:$I,"OUT",\'Fob Log\'!$H$2:$H,"<"&NOW()-1)', BRAND.danger],
+    ['F', 'RETURNED THIS WEEK', '=COUNTIFS(\'Fob Log\'!$I$2:$I,"RETURNED",\'Fob Log\'!$J$2:$J,">="&TODAY()-WEEKDAY(TODAY(),2)+1)', BRAND.emeraldDark],
+  ];
+  cards.forEach(function (card) {
+    const colLetter = card[0];
+    dash.getRange(colLetter + '5:' + colLetter + '6').setBackground(BRAND.white)
+      .setBorder(true, true, true, true, false, false, BRAND.grey, SpreadsheetApp.BorderStyle.SOLID);
+    dash.getRange(colLetter + '5').setValue(card[1])
+      .setFontSize(9).setFontWeight('bold').setFontColor(BRAND.muted)
+      .setVerticalAlignment('bottom').setHorizontalAlignment('center');
+    dash.getRange(colLetter + '6').setFormula(card[2])
+      .setFontSize(30).setFontWeight('bold').setFontColor(card[3])
+      .setHorizontalAlignment('center').setVerticalAlignment('top').setNumberFormat('0');
+  });
+  dash.setRowHeight(6, 52);
+
+  // Currently out (left)
+  dash.getRange('B9').setValue('CURRENTLY OUT')
+    .setFontWeight('bold').setFontColor(BRAND.muted).setFontSize(10);
+  const outHeaders = ['Fob', 'Who', 'Team / Company', 'Checked out at', 'Days out'];
+  dash.getRange('B10:F10').setValues([outHeaders])
+    .setFontWeight('bold').setFontColor(BRAND.black)
+    .setBorder(false, false, true, false, false, false, BRAND.grey, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+  dash.getRange('B11').setFormula(
+    '=IF(COUNTIF(\'Fob Log\'!$I$2:$I,"OUT")=0,"All fobs are in.",' +
+    'QUERY(\'Fob Log\'!$A$2:$O,"select B, C, F, H where I = \'OUT\' order by H asc",0))');
+  dash.getRange('F11').setFormula('=ARRAYFORMULA(IF(LEN($E$11:$E$40)=0,,ROUND(NOW()-$E$11:$E$40,1)))');
+  dash.getRange('E11:E40').setNumberFormat('yyyy-mm-dd hh:mm');
+  dash.getRange('F11:F40').setNumberFormat('0.0');
+
+  // Latest check-outs (right)
+  dash.getRange('H9').setValue('LATEST CHECK-OUTS')
+    .setFontWeight('bold').setFontColor(BRAND.muted).setFontSize(10);
+  dash.getRange('H10:K10').setValues([['When', 'Fob', 'Who', 'Status']])
+    .setFontWeight('bold').setFontColor(BRAND.black)
+    .setBorder(false, false, true, false, false, false, BRAND.grey, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+  dash.getRange('H11').setFormula(
+    '=IFERROR(QUERY(\'Fob Log\'!$A$2:$O,"select H, B, C, I where B is not null order by H desc limit 10",0),)');
+  dash.getRange('H11:H21').setNumberFormat('yyyy-mm-dd hh:mm');
+
+  const rules = [
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenNumberGreaterThan(1)
+      .setFontColor(BRAND.danger).setBold(true)
+      .setRanges([dash.getRange('F11:F40')]).build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('OUT')
+      .setFontColor(BRAND.primaryDark).setBold(true)
+      .setRanges([dash.getRange('K11:K21')]).build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('RETURNED')
+      .setFontColor(BRAND.emeraldDark)
+      .setRanges([dash.getRange('K11:K21')]).build(),
+  ];
+  dash.setConditionalFormatRules(rules);
+
+  protectWarnOnly_(dash, 'This dashboard is generated. Re-run styleSheets() to rebuild it.');
+}
+
+function protectWarnOnly_(sheet, description) {
+  sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)
+    .forEach(function (p) { p.remove(); });
+  sheet.protect().setDescription(description).setWarningOnly(true);
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

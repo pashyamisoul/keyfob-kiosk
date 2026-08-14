@@ -79,6 +79,15 @@ All knobs are in the `CFG` object at the top of `Code.gs`:
 | `REMINDER_EVERY_HOURS` | `24` | First reminder after 24 h out, then every further 24 h |
 | `EXTERNAL_RETENTION_DAYS` | `30` | Days after return before external visitors' data is redacted |
 
+## Dashboard and looks
+
+Run `styleSheets()` once from the Apps Script editor. It builds a live
+*Dashboard* tab (fobs out now, overdue count, returned this week, a
+currently-out list and latest check-outs) and makes the *Fob Log* readable:
+colored header, traffic-light status colors, red tint on rows out longer
+than 24 h, technical columns hidden, filter row, and warning-only
+protection against accidental edits. Safe to re-run anytime.
+
 ## License
 
 MIT
