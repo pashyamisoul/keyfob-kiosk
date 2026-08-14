@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1E3A8A;
+      --primary-dark: #16306F;
+      --primary-soft: #DBEAFE;
+      --secondary: #3B82F6;
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --text-muted: #475569;
+      --border: #CBD5E1;
+      --danger: #B91C1C;
+      --success: #16A34A;
+      --success-dark: #14532D;
+      --success-bg: #F0FDF4;
+      --success-soft: #DCFCE7;
+      --note-bg: #FEF9C3;
+      --note-border: #FACC15;
+      --radius: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Open Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+    h1, h2, .btn { font-family: 'Poppins', system-ui, sans-serif; }
+
+    /* ---------- Layout ---------- */
+    .screen { display: none; flex: 1; flex-direction: column; padding: 32px 24px; max-width: 720px; width: 100%; margin: 0 auto; }
+    .screen.active { display: flex; }
+    header.bar {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      padding: 20px; background: var(--primary); color: #fff;
+    }
+    header.bar h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.3px; }
+
+    /* ---------- Home ---------- */
+    #home { justify-content: center; gap: 24px; }
+    #home .greeting { text-align: center; margin-bottom: 8px; }
+    #home .greeting h2 { font-size: 32px; font-weight: 700; color: var(--primary); }
+    #home .greeting p { color: var(--text-muted); margin-top: 6px; }
+    .choice {
+      display: flex; align-items: center; gap: 20px;
+      background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius);
+      padding: 28px 24px; width: 100%; cursor: pointer; text-align: left;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      font: inherit; color: inherit;
+    }
+    .choice:active { transform: scale(0.98); }
+    .choice:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid var(--secondary); outline-offset: 2px;
+    }
+    .choice .icon {
+      flex: 0 0 64px; height: 64px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .choice.take .icon { background: var(--primary-soft); color: var(--primary); }
+    .choice.give .icon { background: var(--success-soft); color: var(--success-dark); }
+    .choice .icon svg { width: 34px; height: 34px; }
+    .choice h3 { font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 600; }
+    .choice p { color: var(--text-muted); font-size: 16px; margin-top: 2px; }
+
+    /* ---------- Forms ---------- */
+    .form-title { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+    .form-title h2 { font-size: 26px; font-weight: 600; color: var(--primary); }
+    .back {
+      display: flex; align-items: center; justify-content: center;
+      width: 52px; height: 52px; border-radius: 12px; border: 2px solid var(--border);
+      background: var(--surface); cursor: pointer; color: var(--text-muted); flex-shrink: 0;
+    }
+    .back svg { width: 24px; height: 24px; }
+    .field { margin-bottom: 20px; }
+    .field label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 17px; }
+    .field .hint { font-weight: 400; color: var(--text-muted); font-size: 15px; }
+    .segment { display: flex; gap: 12px; }
+    .segment button {
+      flex: 1; min-height: 58px; padding: 10px 12px;
+      font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600;
+      color: var(--text-muted); background: var(--surface);
+      border: 2px solid var(--border); border-radius: 12px; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .segment button.selected { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+    .consent-text {
+      font-size: 15px; color: var(--text-muted); line-height: 1.45;
+      background: var(--surface); border: 2px solid var(--border); border-bottom: 0;
+      border-radius: 12px 12px 0 0; padding: 14px 16px;
+    }
+    .field label.consent-agree {
+      display: flex; gap: 14px; align-items: center;
+      background: var(--surface); border: 2px solid var(--border);
+      border-radius: 0 0 12px 12px; padding: 14px 16px; cursor: pointer;
+      font-weight: 600; font-size: 17px; min-height: 58px; margin-bottom: 0;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .consent-agree input[type="checkbox"] {
+      appearance: auto; -webkit-appearance: checkbox;
+      width: 30px; height: 30px; min-height: 30px; margin: 0; padding: 0;
+      flex: 0 0 30px; accent-color: var(--success); cursor: pointer;
+    }
+    .consent-agree.checked {
+      border-color: var(--success); background: var(--success-bg); color: var(--success-dark);
+    }
+    input:not([type="checkbox"]), select {
+      width: 100%; min-height: 58px; padding: 14px 16px;
+      font: inherit; font-size: 19px; color: var(--text);
+      background: var(--surface); border: 2px solid var(--border); border-radius: 12px;
+      appearance: none; -webkit-appearance: none;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 16px center; padding-right: 48px;
+    }
+    input:focus, select:focus { border-color: var(--secondary); }
+    .field.invalid input, .field.invalid select { border-color: var(--danger); }
+    .field .error { display: none; color: var(--danger); font-size: 15px; margin-top: 6px; font-weight: 600; }
+    .field.invalid .error { display: block; }
+    .holder-info {
+      display: none; background: var(--note-bg); border: 1.5px solid var(--note-border); border-radius: 10px;
+      padding: 10px 14px; margin-top: 8px; font-size: 15.5px; color: var(--text);
+    }
+    .btn {
+      width: 100%; min-height: 64px; margin-top: 8px;
+      font-size: 20px; font-weight: 600; letter-spacing: 0.2px;
+      color: #fff; background: var(--primary); border: none; border-radius: 14px;
+      cursor: pointer; transition: background 0.2s, transform 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn:active { background: var(--primary-dark); transform: scale(0.99); }
+    .btn:disabled { opacity: 0.55; cursor: default; }
+    .btn .spinner {
+      width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.35);
+      border-top-color: #fff; border-radius: 50%; display: none;
+      animation: spin 0.8s linear infinite;
+    }
+    .btn.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Success ---------- */
+    #success { justify-content: center; align-items: center; text-align: center; gap: 16px; }
+    #success .check {
+      width: 110px; height: 110px; border-radius: 50%;
+      background: var(--success-bg); border: 3px solid var(--success);
+      display: flex; align-items: center; justify-content: center; color: var(--success-dark);
+    }
+    #success .check svg { width: 56px; height: 56px; }
+    #success h2 { font-size: 30px; color: var(--success-dark); font-weight: 700; }
+    #success p { color: var(--text-muted); font-size: 19px; max-width: 420px; }
+    #success .countdown { font-size: 15px; color: var(--text-muted); margin-top: 12px; }
+
+    /* ---------- Toast / overlay ---------- */
+    #toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(140%);
+      background: var(--danger); color: #fff; font-weight: 600; font-size: 17px;
+      padding: 16px 24px; border-radius: 12px; max-width: 90vw; text-align: center;
+      transition: transform 0.3s ease, opacity 0.3s ease; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+      opacity: 0; pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #loading-overlay {
+      position: fixed; inset: 0; background: rgba(246,244,239,0.75);
+      display: none; align-items: center; justify-content: center; z-index: 40;
+    }
+    #loading-overlay.show { display: flex; }
+    #loading-overlay .spinner {
+      width: 48px; height: 48px; border: 5px solid var(--primary-soft);
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="bar">
+    <h1>Keyfob Kiosk</h1>
+  </header>
+
+  <!-- HOME -->
+  <section id="home" class="screen active">
+    <div class="greeting">
+      <h2>Hello! 👋</h2>
+      <p>What would you like to do?</p>
+    </div>
+    <button class="choice take" onclick="openIssue()">
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+      <span><h3>Take a fob</h3><p>Check out a keyfob for yourself or a visitor</p></span>
+    </button>
+    <button class="choice give" onclick="openReturn()">
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+      <span><h3>Return a fob</h3><p>Check a keyfob back in</p></span>
+    </button>
+  </section>
+
+  <!-- ISSUE FORM -->
+  <section id="issue" class="screen">
+    <div class="form-title">
+      <button class="back" onclick="goHome()" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h2>Take a fob</h2>
+    </div>
+    <form id="issue-form" novalidate>
+      <div class="field">
+        <label>Who is collecting the fob?</label>
+        <div class="segment" role="radiogroup" aria-label="Who is collecting the fob?">
+          <button type="button" id="type-employee" class="selected" onclick="setIssueType('employee')">Employee</button>
+          <button type="button" id="type-external" onclick="setIssueType('external')">External visitor</button>
+        </div>
+      </div>
+      <div class="field" data-field="name">
+        <label for="i-name">Your full name</label>
+        <input id="i-name" name="name" type="text" autocomplete="off" enterkeyhint="next">
+        <div class="error">Please enter your name.</div>
+      </div>
+      <div class="field" data-field="email">
+        <label for="i-email" id="i-email-label">Work email <span class="hint">(@example.com)</span></label>
+        <input id="i-email" name="email" type="email" autocomplete="off" inputmode="email" autocapitalize="none" enterkeyhint="next">
+        <div class="error" id="i-email-error">Please enter a valid @example.com email address.</div>
+      </div>
+      <div class="field" data-field="team" id="field-team">
+        <label for="i-team">Team</label>
+        <select id="i-team" name="team"><option value="">Select your team…</option></select>
+        <div class="error">Please select your team.</div>
+      </div>
+      <div class="field" data-field="company" id="field-company" style="display:none">
+        <label for="i-company">Company / organisation</label>
+        <input id="i-company" name="company" type="text" autocomplete="off" enterkeyhint="next">
+        <div class="error">Please enter your company.</div>
+      </div>
+      <div class="field" data-field="manager">
+        <label for="i-manager" id="i-manager-label">Reporting manager</label>
+        <input id="i-manager" name="manager" type="text" autocomplete="off" enterkeyhint="next">
+        <div class="error" id="i-manager-error">Please enter your manager's name.</div>
+      </div>
+      <div class="field" data-field="fob">
+        <label for="i-fob">Fob number <span class="hint">(printed on the fob you were handed)</span></label>
+        <input id="i-fob" name="fob" type="text" autocomplete="off" autocapitalize="characters" enterkeyhint="next">
+        <div class="error">Please enter the fob number.</div>
+      </div>
+      <div class="field">
+        <label for="i-notes">Notes <span class="hint">(optional, e.g. deposit left or remarks)</span></label>
+        <input id="i-notes" name="notes" type="text" autocomplete="off" enterkeyhint="done">
+      </div>
+      <div class="field" data-field="consent" id="field-consent" style="display:none">
+        <div class="consent-text"><strong>Privacy notice:</strong> We process your name,
+          email address and company to manage keyfob lending, including a confirmation email and
+          return reminders. Your name and email are deleted automatically 30 days after the fob
+          is returned. To exercise your data rights, contact reception / Office Management.</div>
+        <label class="consent-agree">
+          <input type="checkbox" id="i-consent">
+          <span>I have read the notice and agree</span>
+        </label>
+        <div class="error">Please tick "I have read the notice and agree" to continue.</div>
+      </div>
+      <button type="submit" class="btn" id="issue-btn"><span class="spinner"></span><span class="label">Check out fob</span></button>
+    </form>
+  </section>
+
+  <!-- RETURN FORM -->
+  <section id="return" class="screen">
+    <div class="form-title">
+      <button class="back" onclick="goHome()" aria-label="Back to start">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h2>Return a fob</h2>
+    </div>
+    <form id="return-form" novalidate>
+      <div class="field" data-field="fob">
+        <label for="r-fob">Fob number</label>
+        <select id="r-fob" name="fob"><option value="">Select the fob you're returning…</option></select>
+        <div class="holder-info" id="holder-info"></div>
+        <div class="error">Please select a fob.</div>
+      </div>
+      <div class="field" data-field="name">
+        <label for="r-name">Your full name</label>
+        <input id="r-name" name="name" type="text" autocomplete="off" enterkeyhint="next">
+        <div class="error">Please enter your name.</div>
+      </div>
+      <div class="field" data-field="email">
+        <label for="r-email">Your email</label>
+        <input id="r-email" name="email" type="email" autocomplete="off" inputmode="email" autocapitalize="none" enterkeyhint="next">
+        <div class="error">Please enter a valid email address.</div>
+      </div>
+      <button type="submit" class="btn" id="return-btn"><span class="spinner"></span><span class="label">Check in fob</span></button>
+    </form>
+  </section>
+
+  <!-- SUCCESS -->
+  <section id="success" class="screen">
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h2 id="success-title">All done!</h2>
+    <p id="success-msg"></p>
+    <div class="countdown" id="success-countdown"></div>
+  </section>
+
+  <div id="toast" role="alert"></div>
+  <div id="loading-overlay"><div class="spinner"></div></div>
+
+  <script>
+    // Local preview shim: outside Apps Script (no google.script.run), run
+    // against in-memory demo data so the kiosk can be tried in any browser.
+    // Inside the deployed web app this block is skipped entirely.
+    if (typeof google === 'undefined' || !google.script) {
+      window.google = { script: { run: null } };
+      (function () {
+        var demo = {
+          teams: ['Engineering', 'Product', 'Design', 'Marketing', 'Office Management', 'IT', 'Other'],
+          fobs: {},
+        };
+        for (var i = 1; i <= 12; i++) demo.fobs[String(i)] = null;
+        demo.fobs['3'] = { holderName: 'Anna Smith', holderEmail: 'asmith@example.com', since: '12 Aug, 09:40' };
+        demo.fobs['7'] = { holderName: 'Jonas Weber', holderEmail: 'jweber@example.com', since: '13 Aug, 14:05' };
+
+        function runner() {
+          var onOk = function () {}, onErr = function () {};
+          var api = {
+            withSuccessHandler: function (f) { onOk = f; return api; },
+            withFailureHandler: function (f) { onErr = f; return api; },
+            getKioskData: function () {
+              setTimeout(function () {
+                var out = [];
+                Object.keys(demo.fobs).forEach(function (k) {
+                  if (demo.fobs[k]) out.push({ fob: k, holderName: demo.fobs[k].holderName, holderEmail: demo.fobs[k].holderEmail, since: demo.fobs[k].since });
+                });
+                onOk({ outFobs: out, teams: demo.teams });
+              }, 300);
+            },
+            issueFob: function (form) {
+              setTimeout(function () {
+                var fob = form.fob.toUpperCase().replace(/\s+/g, '');
+                if (demo.fobs[fob]) { onErr(new Error('Fob ' + fob + ' is already checked out to ' + demo.fobs[fob].holderName + '. Please double-check the number on the fob.')); return; }
+                demo.fobs[fob] = { holderName: form.name, holderEmail: form.email, since: 'just now' };
+                onOk({ ok: true, fob: fob, name: form.name, email: form.email });
+              }, 500);
+            },
+            returnFob: function (form) {
+              setTimeout(function () {
+                demo.fobs[form.fob] = null;
+                onOk({ ok: true, fob: form.fob, name: form.name, email: form.email });
+              }, 500);
+            },
+          };
+          return api;
+        }
+        Object.defineProperty(google.script, 'run', { get: runner });
+        document.title = 'Keyfob Kiosk (demo mode)';
+      })();
+    }
+
+    var COMPANY_EMAIL_RE = /^[A-Za-z0-9._%+-]+@example\.com$/i;
+    var ANY_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    var kioskData = { outFobs: [], teams: [] };
+    var idleTimer = null;
+    var successTimer = null;
+    var issueType = 'employee';
+
+    function setIssueType(t) {
+      issueType = t;
+      var employee = t === 'employee';
+      document.getElementById('type-employee').classList.toggle('selected', employee);
+      document.getElementById('type-external').classList.toggle('selected', !employee);
+      document.getElementById('i-email-label').innerHTML = employee
+        ? 'Work email <span class="hint">(@example.com)</span>'
+        : 'Email address';
+      document.getElementById('i-email-error').textContent = employee
+        ? 'Please enter a valid @example.com email address.'
+        : 'Please enter a valid email address.';
+      document.getElementById('field-team').style.display = employee ? '' : 'none';
+      document.getElementById('field-company').style.display = employee ? 'none' : '';
+      document.getElementById('i-manager-label').textContent = employee
+        ? 'Reporting manager'
+        : 'Contact person you are visiting';
+      document.getElementById('i-manager-error').textContent = employee
+        ? "Please enter your manager's name."
+        : 'Please enter who you are visiting.';
+      document.getElementById('field-consent').style.display = employee ? 'none' : '';
+      if (employee) document.getElementById('i-consent').checked = false;
+      syncConsentUI();
+      document.querySelectorAll('#issue .field.invalid').forEach(function (f) { f.classList.remove('invalid'); });
+    }
+
+    function syncConsentUI() {
+      var box = document.getElementById('i-consent');
+      document.querySelector('.consent-agree').classList.toggle('checked', box.checked);
+    }
+    document.getElementById('i-consent').addEventListener('change', syncConsentUI);
+
+    // ---------- Navigation ----------
+    function show(id) {
+      document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
+      document.getElementById(id).classList.add('active');
+      resetIdle();
+    }
+    function goHome() {
+      clearInterval(successTimer);
+      document.querySelectorAll('form').forEach(function (f) { f.reset(); });
+      document.querySelectorAll('.field.invalid').forEach(function (f) { f.classList.remove('invalid'); });
+      document.getElementById('holder-info').style.display = 'none';
+      setIssueType('employee');
+      show('home');
+    }
+    function openIssue() { refreshData(function () { show('issue'); }); }
+    function openReturn() { refreshData(function () { show('return'); }); }
+
+    // ---------- Idle: return to home after 90s on any non-home screen ----------
+    function resetIdle() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () {
+        if (!document.getElementById('home').classList.contains('active')) goHome();
+      }, 90000);
+    }
+    ['touchstart', 'click', 'keydown'].forEach(function (ev) {
+      document.addEventListener(ev, resetIdle, { passive: true });
+    });
+
+    // ---------- Data ----------
+    function refreshData(then) {
+      setOverlay(true);
+      google.script.run
+        .withSuccessHandler(function (data) {
+          kioskData = data;
+          fillSelect('i-team', data.teams.map(function (t) { return { value: t, label: t }; }), 'Select your team…');
+          fillSelect('r-fob', data.outFobs.map(function (o) {
+            return { value: o.fob, label: 'Fob ' + o.fob + (o.holderName ? ' (' + o.holderName + ')' : '') };
+          }), "Select the fob you're returning…");
+          setOverlay(false);
+          then();
+        })
+        .withFailureHandler(function (err) {
+          setOverlay(false);
+          toast(err.message || 'Could not load data. Please try again.');
+        })
+        .getKioskData();
+    }
+    function fillSelect(id, options, placeholder) {
+      var sel = document.getElementById(id);
+      sel.innerHTML = '';
+      var ph = document.createElement('option');
+      ph.value = ''; ph.textContent = placeholder;
+      sel.appendChild(ph);
+      options.forEach(function (o) {
+        var opt = document.createElement('option');
+        opt.value = o.value; opt.textContent = o.label;
+        sel.appendChild(opt);
+      });
+    }
+
+    // Prefill the return form with the borrower on record (editable)
+    document.getElementById('r-fob').addEventListener('change', function () {
+      var info = document.getElementById('holder-info');
+      var match = kioskData.outFobs.filter(function (o) { return o.fob === this.value; }, this)[0];
+      if (match && match.holderName) {
+        info.textContent = 'Taken by ' + match.holderName + (match.since ? ' on ' + match.since : '');
+        info.style.display = 'block';
+        if (!document.getElementById('r-name').value) document.getElementById('r-name').value = match.holderName;
+        if (!document.getElementById('r-email').value) document.getElementById('r-email').value = match.holderEmail;
+      } else {
+        info.style.display = 'none';
+      }
+    });
+
+    // ---------- Validation ----------
+    function validate(formId, rules) {
+      var ok = true;
+      Object.keys(rules).forEach(function (name) {
+        var field = document.querySelector('#' + formId + ' .field[data-field="' + name + '"]');
+        var input = field.querySelector('input, select');
+        var valid = rules[name](input.type === 'checkbox' ? input.checked : input.value.trim());
+        field.classList.toggle('invalid', !valid);
+        if (!valid) ok = false;
+      });
+      return ok;
+    }
+    var required = function (v) { return v.length > 0; };
+    var validAnyEmail = function (v) { return ANY_EMAIL_RE.test(v); };
+
+    // ---------- Submit: issue ----------
+    document.getElementById('issue-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var employee = issueType === 'employee';
+      var rules = {
+        name: required,
+        email: employee ? function (v) { return COMPANY_EMAIL_RE.test(v); } : validAnyEmail,
+        manager: required,
+        fob: required,
+      };
+      rules[employee ? 'team' : 'company'] = required;
+      if (!employee) rules.consent = function (checked) { return checked === true; };
+      if (!validate('issue', rules)) return;
+      var payload = {
+        name: val('i-name'), email: val('i-email'), type: issueType,
+        team: employee ? val('i-team') : val('i-company'),
+        manager: val('i-manager'), fob: val('i-fob'), notes: val('i-notes'),
+        consent: document.getElementById('i-consent').checked
+      };
+      submit('issue-btn', 'issueFob', payload, function (res) {
+        showSuccess('Fob ' + res.fob + ' is yours!',
+          'Enjoy, ' + firstName(res.name) + '. A confirmation email is on its way to ' + res.email +
+          '. Please check the fob back in here when you return it.');
+      });
+    });
+
+    // ---------- Submit: return ----------
+    document.getElementById('return-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!validate('return', { fob: required, name: required, email: validAnyEmail })) return;
+      var payload = { name: val('r-name'), email: val('r-email'), fob: val('r-fob') };
+      submit('return-btn', 'returnFob', payload, function (res) {
+        showSuccess('Fob ' + res.fob + ' returned!',
+          'Thanks, ' + firstName(res.name) + '. The fob is available again. A confirmation email is on its way to ' + res.email + '.');
+      });
+    });
+
+    function submit(btnId, fnName, payload, onSuccess) {
+      var btn = document.getElementById(btnId);
+      btn.disabled = true; btn.classList.add('loading');
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.disabled = false; btn.classList.remove('loading');
+          onSuccess(res);
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false; btn.classList.remove('loading');
+          toast(err.message || 'Something went wrong. Please try again.');
+        })[fnName](payload);
+    }
+
+    // ---------- Success screen ----------
+    function showSuccess(title, msg) {
+      document.getElementById('success-title').textContent = title;
+      document.getElementById('success-msg').textContent = msg;
+      show('success');
+      var secs = 6;
+      var cd = document.getElementById('success-countdown');
+      cd.textContent = 'Back to start in ' + secs + 's…';
+      clearInterval(successTimer);
+      successTimer = setInterval(function () {
+        secs--;
+        if (secs <= 0) { goHome(); return; }
+        cd.textContent = 'Back to start in ' + secs + 's…';
+      }, 1000);
+    }
+
+    // ---------- Utils ----------
+    function val(id) { return document.getElementById(id).value.trim(); }
+    function firstName(n) { return n.split(' ')[0]; }
+    function setOverlay(on) { document.getElementById('loading-overlay').classList.toggle('show', on); }
+    var toastTimer = null;
+    function toast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.classList.remove('show'); }, 4500);
+    }
+  </script>
+</body>
+</html>
