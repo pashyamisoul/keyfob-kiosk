@@ -75,6 +75,7 @@ function setup() {
   } else {
     migrateLog_(log);
   }
+  formatTimestampColumns_(log);
 
   let teams = ss.getSheetByName(CFG.TEAMS_SHEET);
   if (!teams) {
@@ -104,6 +105,16 @@ function migrateLog_(log) {
   });
   // Refresh the descriptive header names (harmless if unchanged)
   log.getRange(1, 1, 1, LOG_HEADER.length).setValues([LOG_HEADER]).setFontWeight('bold');
+}
+
+const TIMESTAMP_FORMAT = 'yyyy-mm-dd hh:mm:ss';
+
+/** Show full date AND time in the Checked Out At / Returned At columns. */
+function formatTimestampColumns_(log) {
+  [COL.OUT_AT, COL.RETURNED_AT].forEach(function (c) {
+    log.getRange(2, c + 1, Math.max(log.getMaxRows() - 1, 1), 1)
+      .setNumberFormat(TIMESTAMP_FORMAT);
+  });
 }
 
 /**
@@ -191,6 +202,8 @@ function issueFob(form) {
       logId, fob, name, email, type, team, manager, now, 'OUT', '', '', '', notes, 0,
       isEmployee ? '' : 'Yes (kiosk checkbox)',
     ]);
+    // appendRow can grow the grid past the pre-formatted range
+    log.getRange(log.getLastRow(), COL.OUT_AT + 1).setNumberFormat(TIMESTAMP_FORMAT);
 
     if (CFG.SEND_CONFIRMATION_EMAIL) {
       trySendEmail_(email, 'Keyfob ' + fob + ' has been issued to you',
@@ -243,6 +256,7 @@ function returnFob(form) {
     const mergedNotes = [existingNote, note, returnNotes ? 'On return: ' + returnNotes : '']
       .filter(Boolean).join(' | ');
     log.getRange(out.row, COL.STATUS + 1, 1, 5).setValues([['RETURNED', now, name, email, mergedNotes]]);
+    log.getRange(out.row, COL.RETURNED_AT + 1).setNumberFormat(TIMESTAMP_FORMAT);
 
     if (CFG.SEND_CONFIRMATION_EMAIL) {
       const when = Utilities.formatDate(now, Session.getScriptTimeZone(), 'd MMM yyyy, HH:mm');
