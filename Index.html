@@ -486,10 +486,10 @@
             document.getElementById('r-name').value = res.name;
             document.getElementById('r-email').value = res.email;
             st.className = 'fob-status found';
-            st.textContent = 'Fob ' + fob + ' found. Details filled in below, edit them if you are returning it for someone else.';
+            st.textContent = 'Fob ' + fob + ' found. Details filled in below.';
           } else {
             st.className = 'fob-status notfound';
-            st.textContent = 'Fob ' + fob + ' is not marked as checked out. Please double-check the number.';
+            st.textContent = 'Fob not found, kindly check the number again.';
           }
         })
         .withFailureHandler(function () { st.style.display = 'none'; lastLookup = ''; })
