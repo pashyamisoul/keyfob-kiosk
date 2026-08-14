@@ -127,10 +127,6 @@
     .field.invalid input, .field.invalid select { border-color: var(--danger); }
     .field .error { display: none; color: var(--danger); font-size: 15px; margin-top: 6px; font-weight: 600; }
     .field.invalid .error { display: block; }
-    .holder-info {
-      display: none; background: var(--note-bg); border: 1.5px solid var(--note-border); border-radius: 10px;
-      padding: 10px 14px; margin-top: 8px; font-size: 15.5px; color: var(--text);
-    }
     .btn {
       width: 100%; min-height: 64px; margin-top: 8px;
       font-size: 20px; font-weight: 600; letter-spacing: 0.2px;
@@ -281,10 +277,9 @@
     </div>
     <form id="return-form" novalidate>
       <div class="field" data-field="fob">
-        <label for="r-fob">Fob number</label>
-        <select id="r-fob" name="fob"><option value="">Select the fob you're returning…</option></select>
-        <div class="holder-info" id="holder-info"></div>
-        <div class="error">Please select a fob.</div>
+        <label for="r-fob">Fob number <span class="hint">(printed on the fob you're returning)</span></label>
+        <input id="r-fob" name="fob" type="text" autocomplete="off" autocapitalize="characters" enterkeyhint="next">
+        <div class="error">Please enter the fob number.</div>
       </div>
       <div class="field" data-field="name">
         <label for="r-name">Your full name</label>
@@ -334,26 +329,22 @@
             withSuccessHandler: function (f) { onOk = f; return api; },
             withFailureHandler: function (f) { onErr = f; return api; },
             getKioskData: function () {
-              setTimeout(function () {
-                var out = [];
-                Object.keys(demo.fobs).forEach(function (k) {
-                  if (demo.fobs[k]) out.push({ fob: k, holderName: demo.fobs[k].holderName, holderEmail: demo.fobs[k].holderEmail, since: demo.fobs[k].since });
-                });
-                onOk({ outFobs: out, teams: demo.teams });
-              }, 300);
+              setTimeout(function () { onOk({ teams: demo.teams }); }, 300);
             },
             issueFob: function (form) {
               setTimeout(function () {
                 var fob = form.fob.toUpperCase().replace(/\s+/g, '');
-                if (demo.fobs[fob]) { onErr(new Error('Fob ' + fob + ' is already checked out to ' + demo.fobs[fob].holderName + '. Please double-check the number on the fob.')); return; }
+                if (demo.fobs[fob]) { onErr(new Error('Fob ' + fob + ' is already checked out. Please double-check the number on the fob.')); return; }
                 demo.fobs[fob] = { holderName: form.name, holderEmail: form.email, since: 'just now' };
                 onOk({ ok: true, fob: fob, name: form.name, email: form.email });
               }, 500);
             },
             returnFob: function (form) {
               setTimeout(function () {
-                demo.fobs[form.fob] = null;
-                onOk({ ok: true, fob: form.fob, name: form.name, email: form.email });
+                var fob = form.fob.toUpperCase().replace(/\s+/g, '');
+                if (!demo.fobs[fob]) { onErr(new Error('Fob ' + fob + ' is not marked as checked out.')); return; }
+                demo.fobs[fob] = null;
+                onOk({ ok: true, fob: fob, name: form.name, email: form.email });
               }, 500);
             },
           };
@@ -366,7 +357,7 @@
 
     var COMPANY_EMAIL_RE = /^[A-Za-z0-9._%+-]+@example\.com$/i;
     var ANY_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    var kioskData = { outFobs: [], teams: [] };
+    var kioskData = { teams: [] };
     var idleTimer = null;
     var successTimer = null;
     var issueType = 'employee';
@@ -412,7 +403,6 @@
       clearInterval(successTimer);
       document.querySelectorAll('form').forEach(function (f) { f.reset(); });
       document.querySelectorAll('.field.invalid').forEach(function (f) { f.classList.remove('invalid'); });
-      document.getElementById('holder-info').style.display = 'none';
       setIssueType('employee');
       show('home');
     }
@@ -437,9 +427,6 @@
         .withSuccessHandler(function (data) {
           kioskData = data;
           fillSelect('i-team', data.teams.map(function (t) { return { value: t, label: t }; }), 'Select your team…');
-          fillSelect('r-fob', data.outFobs.map(function (o) {
-            return { value: o.fob, label: 'Fob ' + o.fob + (o.holderName ? ' (' + o.holderName + ')' : '') };
-          }), "Select the fob you're returning…");
           setOverlay(false);
           then();
         })
@@ -461,20 +448,6 @@
         sel.appendChild(opt);
       });
     }
-
-    // Prefill the return form with the borrower on record (editable)
-    document.getElementById('r-fob').addEventListener('change', function () {
-      var info = document.getElementById('holder-info');
-      var match = kioskData.outFobs.filter(function (o) { return o.fob === this.value; }, this)[0];
-      if (match && match.holderName) {
-        info.textContent = 'Taken by ' + match.holderName + (match.since ? ' on ' + match.since : '');
-        info.style.display = 'block';
-        if (!document.getElementById('r-name').value) document.getElementById('r-name').value = match.holderName;
-        if (!document.getElementById('r-email').value) document.getElementById('r-email').value = match.holderEmail;
-      } else {
-        info.style.display = 'none';
-      }
-    });
 
     // ---------- Validation ----------
     function validate(formId, rules) {

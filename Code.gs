@@ -136,28 +136,17 @@ function installTriggers() {
 // Data the kiosk UI needs to render its dropdowns
 // ---------------------------------------------------------------------------
 
+// Privacy: the kiosk URL may be publicly reachable, so this must never
+// expose who currently holds which fob. Only the team list leaves the server.
 function getKioskData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  const outMap = getOutFobs_(mustGetSheet_(ss, CFG.LOG_SHEET));
-  const outFobs = Object.keys(outMap)
-    .sort(function (a, b) { return outMap[a].outAt - outMap[b].outAt; })
-    .map(function (fob) {
-      const o = outMap[fob];
-      return {
-        fob: fob,
-        holderName: o.name,
-        holderEmail: o.email,
-        since: Utilities.formatDate(new Date(o.outAt), Session.getScriptTimeZone(), 'd MMM, HH:mm'),
-      };
-    });
 
   const teamsSheet = ss.getSheetByName(CFG.TEAMS_SHEET);
   const teams = teamsSheet
     ? teamsSheet.getDataRange().getValues().slice(1).map((r) => String(r[0]).trim()).filter(Boolean)
     : [];
 
-  return { outFobs: outFobs, teams: teams };
+  return { teams: teams };
 }
 
 // ---------------------------------------------------------------------------
@@ -191,8 +180,8 @@ function issueFob(form) {
 
     const out = getOutFobs_(log)[fob];
     if (out) {
-      throw new Error('Fob ' + fob + ' is already checked out to ' + out.name +
-        '. Please double-check the number on the fob.');
+      // Do not name the current holder: this message is shown to anyone
+      throw new Error('Fob ' + fob + ' is already checked out. Please double-check the number on the fob.');
     }
 
     const now = new Date();
