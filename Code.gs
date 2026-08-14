@@ -546,9 +546,16 @@ function clean_(v) {
   return String(v == null ? '' : v).trim();
 }
 
-/** Fob numbers are typed by hand: trim, uppercase, collapse inner spaces. */
+/**
+ * Fob numbers are typed by hand: trim, uppercase, collapse inner spaces.
+ * Purely numeric fobs also lose leading zeros ("0999" and "999" are the
+ * same physical fob, and Sheets stores numeric-looking values as numbers
+ * anyway, which would silently merge them in storage but not in checks).
+ */
 function normalizeFob_(v) {
-  return clean_(v).toUpperCase().replace(/\s+/g, '');
+  let fob = clean_(v).toUpperCase().replace(/\s+/g, '');
+  if (/^\d+$/.test(fob)) fob = String(parseInt(fob, 10));
+  return fob;
 }
 
 function validateEmail_(email, requireCompanyDomain) {
