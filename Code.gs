@@ -136,6 +136,21 @@ function installTriggers() {
 // Data the kiosk UI needs to render its dropdowns
 // ---------------------------------------------------------------------------
 
+/**
+ * Look up a single fob typed on the return form. Returns the borrower's
+ * name/email so the form can prefill them. Privacy: this only answers for
+ * one specific fob number the person already has in hand; the full list of
+ * outstanding fobs is never sent to the client.
+ */
+function lookupFob(fobRaw) {
+  const fob = normalizeFob_(fobRaw);
+  if (!fob) return { found: false };
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const out = getOutFobs_(mustGetSheet_(ss, CFG.LOG_SHEET))[fob];
+  if (!out) return { found: false };
+  return { found: true, name: out.name, email: out.email };
+}
+
 // Privacy: the kiosk URL may be publicly reachable, so this must never
 // expose who currently holds which fob. Only the team list leaves the server.
 function getKioskData() {

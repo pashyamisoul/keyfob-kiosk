@@ -127,6 +127,13 @@
     .field.invalid input, .field.invalid select { border-color: var(--danger); }
     .field .error { display: none; color: var(--danger); font-size: 15px; margin-top: 6px; font-weight: 600; }
     .field.invalid .error { display: block; }
+    .fob-status {
+      display: none; border-radius: 10px; padding: 10px 14px; margin-top: 8px;
+      font-size: 15.5px; font-weight: 600;
+      background: var(--note-bg); border: 1.5px solid var(--note-border); color: var(--text);
+    }
+    .fob-status.found { background: var(--success-bg); border-color: var(--success); color: var(--success-dark); }
+    .fob-status.notfound { background: #FEE2E2; border-color: var(--danger); color: var(--danger); }
     .btn {
       width: 100%; min-height: 64px; margin-top: 8px;
       font-size: 20px; font-weight: 600; letter-spacing: 0.2px;
@@ -279,6 +286,7 @@
       <div class="field" data-field="fob">
         <label for="r-fob">Fob number <span class="hint">(printed on the fob you're returning)</span></label>
         <input id="r-fob" name="fob" type="text" autocomplete="off" autocapitalize="characters" enterkeyhint="next">
+        <div class="fob-status" id="r-fob-status" role="status"></div>
         <div class="error">Please enter the fob number.</div>
       </div>
       <div class="field" data-field="name">
@@ -330,6 +338,14 @@
             withFailureHandler: function (f) { onErr = f; return api; },
             getKioskData: function () {
               setTimeout(function () { onOk({ teams: demo.teams }); }, 300);
+            },
+            lookupFob: function (fobRaw) {
+              setTimeout(function () {
+                var fob = String(fobRaw).toUpperCase().replace(/\s+/g, '');
+                var o = demo.fobs[fob];
+                if (o) onOk({ found: true, name: o.holderName, email: o.holderEmail });
+                else onOk({ found: false });
+              }, 400);
             },
             issueFob: function (form) {
               setTimeout(function () {
@@ -403,6 +419,8 @@
       clearInterval(successTimer);
       document.querySelectorAll('form').forEach(function (f) { f.reset(); });
       document.querySelectorAll('.field.invalid').forEach(function (f) { f.classList.remove('invalid'); });
+      document.getElementById('r-fob-status').style.display = 'none';
+      lastLookup = '';
       setIssueType('employee');
       show('home');
     }
@@ -448,6 +466,40 @@
         sel.appendChild(opt);
       });
     }
+
+    // ---------- Return form: look up the typed fob and prefill the borrower ----------
+    var lookupTimer = null;
+    var lastLookup = '';
+    function normFob(v) { return v.trim().toUpperCase().replace(/\s+/g, ''); }
+    function lookupReturnFob() {
+      var fob = normFob(val('r-fob'));
+      var st = document.getElementById('r-fob-status');
+      if (!fob) { st.style.display = 'none'; lastLookup = ''; return; }
+      if (fob === lastLookup) return;
+      lastLookup = fob;
+      st.className = 'fob-status'; st.style.display = 'block';
+      st.textContent = 'Checking fob ' + fob + '\u2026';
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (normFob(val('r-fob')) !== fob) return; // typed something else meanwhile
+          if (res.found) {
+            document.getElementById('r-name').value = res.name;
+            document.getElementById('r-email').value = res.email;
+            st.className = 'fob-status found';
+            st.textContent = 'Fob ' + fob + ' found. Details filled in below, edit them if you are returning it for someone else.';
+          } else {
+            st.className = 'fob-status notfound';
+            st.textContent = 'Fob ' + fob + ' is not marked as checked out. Please double-check the number.';
+          }
+        })
+        .withFailureHandler(function () { st.style.display = 'none'; lastLookup = ''; })
+        .lookupFob(fob);
+    }
+    document.getElementById('r-fob').addEventListener('input', function () {
+      clearTimeout(lookupTimer);
+      lookupTimer = setTimeout(lookupReturnFob, 500);
+    });
+    document.getElementById('r-fob').addEventListener('blur', lookupReturnFob);
 
     // ---------- Validation ----------
     function validate(formId, rules) {
